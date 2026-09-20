@@ -189,7 +189,7 @@
     }
 
     .main-layout { display: flex; flex: 1; position: relative; overflow: hidden; }
-    sidebar { width: 440px; height: calc(100vh - 90px); margin: 12px 0 12px 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; z-index: 1000; }
+    sidebar { width: 440px; height: calc(100vh - 90px); margin: 12px 0 12px 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; z-index: 1000; transition: all 0.3s ease; }
 
     input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border-radius: 6px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.85rem; }
     input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255, 255, 255, 0.15); border-radius: 3px; outline: none; }
@@ -208,32 +208,217 @@
     .marker-sync { width: 16px; height: 16px; background: #ffffff; border: 3px solid #3b82f6; border-radius: 50%; box-shadow: 0 0 14px #3b82f6; }
 
     .address-badge { font-size: 0.73rem; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3); margin-top: 4px; display: none; }
+
+    /* Przyciski zwijania paneli */
+    .sidebar-toggle-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 1001;
+      background: rgba(30, 41, 59, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      transition: all 0.2s ease;
+    }
+    .sidebar-toggle-btn:hover {
+      background: var(--accent-blue);
+      color: #ffffff;
+    }
+
+    .close-sidebar-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .close-sidebar-btn:hover { background: #ef4444; color: #fff; }
+
+    .chart-toggle-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-main);
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chart-toggle-btn:hover { background: var(--accent-blue); color: #fff; }
+
+    /* Stan zwinięty sidebara na komputerze */
+    sidebar.collapsed {
+      display: none !important;
+    }
+
+    /* Stan zwinięty wykresu profilu */
+    .chart-panel { transition: all 0.3s ease; }
+    .chart-panel.collapsed {
+      height: 42px !important;
+      padding: 8px 12px !important;
+      margin-bottom: 8px !important;
+    }
+    .chart-panel.collapsed #chartContainer {
+      display: none !important;
+    }
+
+    /* Zakładki przełączania widoków na smartfonie */
+    .mobile-tabs {
+      display: none;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .mobile-tab-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mobile-tab-btn.active {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Pełny RWD dla smartfonów i ekranów <= 868px */
+    @media (max-width: 868px) {
+      body {
+        height: 100vh;
+        height: 100dvh;
+      }
+      header {
+        margin: 8px 8px 0 8px !important;
+        padding: 10px 14px !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+      }
+      .logo-container {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .header-subtitle {
+        display: none !important;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .mobile-tabs {
+        display: flex !important;
+        flex: 1;
+      }
+      #presetsBar {
+        overflow-x: auto;
+        max-width: 45vw;
+        padding-bottom: 2px;
+        white-space: nowrap;
+      }
+      .main-layout {
+        flex-direction: column;
+        position: relative;
+      }
+      sidebar {
+        width: calc(100vw - 16px) !important;
+        height: calc(100% - 16px) !important;
+        margin: 8px !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1005;
+        background: rgba(15, 23, 42, 0.98) !important;
+        border-radius: 12px;
+      }
+      sidebar.mobile-hidden {
+        display: none !important;
+      }
+      main {
+        width: 100%;
+        height: 100%;
+        flex: 1;
+      }
+      main.mobile-hidden {
+        display: none !important;
+      }
+      .sidebar-toggle-btn {
+        display: none !important;
+      }
+      main > div:first-child {
+        margin: 8px !important;
+      }
+      .chart-panel {
+        margin: 0 8px 8px 8px !important;
+      }
+      input[type="text"], input[type="number"], select, button {
+        min-height: 40px;
+      }
+    }
   </style>
 </head>
 <body>
   <header class="glass-panel">
     <div class="logo-container">
-      <div class="logo-icon">🚴🏼‍♂️</div>
-      <div>
-        <h1 style="font-size: 1.25rem; font-weight: 700; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">MapBike</h1>
-        <p style="font-size: 0.75rem; color: var(--text-muted);">Planer Tras Rowerowych po Ścieżkach & Drogach Publicznych z Minimalnym Nachyleniem</p>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="logo-icon">🚴🏼‍♂️</div>
+        <div>
+          <h1 style="font-size: 1.25rem; font-weight: 700; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">MapBike</h1>
+          <p class="header-subtitle" style="font-size: 0.75rem; color: var(--text-muted);">Planer Tras Rowerowych po Ścieżkach & Drogach Publicznych z Minimalnym Nachyleniem</p>
+        </div>
       </div>
+      <button class="info-btn" onclick="openInfoModal()" title="O aplikacji MapBike v1.0">i</button>
     </div>
     
-    <div style="display: flex; gap: 8px; align-items: center;">
+    <div class="header-actions" style="display: flex; gap: 8px; align-items: center;">
+      <!-- Zakładki przełączania widoków na smartfonie -->
+      <div class="mobile-tabs" id="mobileTabs">
+        <button class="mobile-tab-btn active" id="tabBtnForm" onclick="switchMobileTab('form')">⚙️ Opcje & Trasy</button>
+        <button class="mobile-tab-btn" id="tabBtnMap" onclick="switchMobileTab('map')">🗺️ Mapa & Profil</button>
+      </div>
+
       <div style="display: flex; gap: 8px; align-items: center;" id="presetsBar">
-        <span style="font-size: 0.8rem; color: #f59e0b; font-weight: 600;">⭐ Ulubione trasy:</span>
+        <span style="font-size: 0.8rem; color: #f59e0b; font-weight: 600;">⭐ Ulubione:</span>
         <div id="presetsList" style="display: flex; gap: 8px; align-items: center;"></div>
       </div>
-      <!-- Przycisk ikony i w kółeczku w prawym górnym rogu -->
-      <button class="info-btn" onclick="openInfoModal()" title="O aplikacji MapBike v1.0">i</button>
     </div>
   </header>
 
-  <div class="main-layout">
-    <sidebar class="glass-panel">
+  <div class="main-layout" id="mainLayout">
+    <!-- Przycisk zwijania sidebara na komputerze -->
+    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Zwiń / Rozwiń panel opcji">
+      <span id="sidebarToggleIcon">◀</span> <span id="sidebarToggleText">Zwiń panel</span>
+    </button>
+
+    <sidebar class="glass-panel" id="sidebar">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <h2 style="font-size: 0.95rem; font-weight: 600;">🧭 Punkty Trasy (Adres, Kliknięcie)</h2>
+        <button class="close-sidebar-btn" onclick="toggleSidebar()" title="Zwiń panel opcji">✕</button>
+      </div>
       <div>
-        <h2 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px;">🧭 Punkty Trasy (Adres, Kliknięcie lub Przeciąganie)</h2>
         <div style="display: flex; flex-direction: column; gap: 12px;">
           
           <!-- Punkt Startowy -->
@@ -345,16 +530,19 @@
       <div id="variantsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
     </sidebar>
 
-    <main style="flex: 1; display: flex; flex-direction: column;">
+    <main id="mainContent" style="flex: 1; display: flex; flex-direction: column;">
       <div style="flex: 1; margin: 12px 16px 12px 12px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
         <div id="map"></div>
       </div>
-      <div class="glass-panel" style="margin: 0 16px 12px 12px; padding: 12px; height: 180px;">
-        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px;">
-          <span>📊 Płynny Profil Wysokościowy (Precyzyjna Synchronizacja Dystansowa)</span>
+      <div class="glass-panel chart-panel" id="chartPanel" style="margin: 0 16px 12px 12px; padding: 12px; height: 180px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>📊 Płynny Profil Wysokościowy</span>
+            <button class="chart-toggle-btn" id="chartToggleBtn" onclick="toggleChart()" title="Zwiń / Rozwiń wykres">▼ Zwiń</button>
+          </div>
           <span id="chartStats" style="color: var(--text-muted);">---</span>
         </div>
-        <div style="height: 140px; position: relative;">
+        <div id="chartContainer" style="height: 140px; position: relative;">
           <canvas id="elevationChart"></canvas>
         </div>
       </div>
@@ -448,6 +636,55 @@
         closeInfoModal();
       }
     });
+
+    function switchMobileTab(tab) {
+      const sidebar = document.getElementById('sidebar');
+      const main = document.getElementById('mainContent');
+      const tabBtnForm = document.getElementById('tabBtnForm');
+      const tabBtnMap = document.getElementById('tabBtnMap');
+
+      if (tab === 'form') {
+        if (sidebar) sidebar.classList.remove('mobile-hidden');
+        if (main) main.classList.add('mobile-hidden');
+        if (tabBtnForm) tabBtnForm.classList.add('active');
+        if (tabBtnMap) tabBtnMap.classList.remove('active');
+      } else {
+        if (sidebar) sidebar.classList.add('mobile-hidden');
+        if (main) main.classList.remove('mobile-hidden');
+        if (tabBtnMap) tabBtnMap.classList.add('active');
+        if (tabBtnForm) tabBtnForm.classList.remove('active');
+        setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+      }
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const icon = document.getElementById('sidebarToggleIcon');
+      const text = document.getElementById('sidebarToggleText');
+      
+      if (!sidebar) return;
+      sidebar.classList.toggle('collapsed');
+      const isCollapsed = sidebar.classList.contains('collapsed');
+      
+      if (icon) icon.innerText = isCollapsed ? '▶' : '◀';
+      if (text) text.innerText = isCollapsed ? 'Rozwiń panel' : 'Zwiń panel';
+      
+      setTimeout(() => { if (map) map.invalidateSize(); }, 250);
+    }
+
+    function toggleChart() {
+      const chartPanel = document.getElementById('chartPanel');
+      const toggleBtn = document.getElementById('chartToggleBtn');
+      
+      if (!chartPanel) return;
+      chartPanel.classList.toggle('collapsed');
+      const isCollapsed = chartPanel.classList.contains('collapsed');
+      
+      if (toggleBtn) {
+        toggleBtn.innerText = isCollapsed ? '▲ Profil' : '▼ Zwiń';
+      }
+      setTimeout(() => { if (map) map.invalidateSize(); }, 250);
+    }
 
     function getFavorites() {
       const stored = localStorage.getItem('mapbike_favorites_v5');
@@ -652,6 +889,13 @@
 
       initChart();
       loadState();
+
+      if (window.innerWidth <= 868) {
+        switchMobileTab('form');
+      }
+      window.addEventListener('resize', () => {
+        if (map) map.invalidateSize();
+      });
     }
 
     async function searchAddress(target) {
@@ -852,6 +1096,9 @@
 
         saveState();
         renderRoutes(data);
+        if (window.innerWidth <= 868) {
+          switchMobileTab('map');
+        }
       } catch (e) {
         alert('Błąd podczas wyznaczania tras: ' + e.message);
       } finally {
