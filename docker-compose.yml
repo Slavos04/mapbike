@@ -23,4 +23,11 @@ services:
       - "3000:80"
     depends_on:
       - backend
+    networks:
+      - default
+      - siec_web
     restart: unless-stopped
+
+networks:
+  siec_web:
+    external: true
