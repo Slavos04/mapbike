@@ -425,11 +425,7 @@
     let activeVariantId = 1;
     let clickState = 'start';
 
-    const INITIAL_FAVORITES = [
-      { id: 'f1', name: 'Jastrzębie -> Studzionka', sLat: 49.9546, sLon: 18.5898, eLat: 49.9882, eLon: 18.7615 },
-      { id: 'f2', name: 'Kraków', sLat: 50.0619, sLon: 19.9368, eLat: 50.0682, eLon: 19.9912 },
-      { id: 'f3', name: 'Zakopane', sLat: 49.2990, sLon: 19.9580, eLat: 49.2690, eLon: 19.9810 }
-    ];
+    const INITIAL_FAVORITES = [];
 
     function openInfoModal() {
       const modal = document.getElementById('infoModal');
@@ -454,15 +450,24 @@
     });
 
     function getFavorites() {
-      const stored = localStorage.getItem('mapbike_favorites_v4');
+      const stored = localStorage.getItem('mapbike_favorites_v5');
       if (stored === null) {
-        localStorage.setItem('mapbike_favorites_v4', JSON.stringify(INITIAL_FAVORITES));
-        return INITIAL_FAVORITES;
+        // Migracja z v4: odrzucamy stare domyślne przykłady (f1, f2, f3)
+        const oldStored = localStorage.getItem('mapbike_favorites_v4');
+        let migrated = [];
+        if (oldStored) {
+          try {
+            const oldFavs = JSON.parse(oldStored);
+            migrated = oldFavs.filter(f => f.id !== 'f1' && f.id !== 'f2' && f.id !== 'f3');
+          } catch (e) {}
+        }
+        localStorage.setItem('mapbike_favorites_v5', JSON.stringify(migrated));
+        return migrated;
       }
       try {
         return JSON.parse(stored);
       } catch (e) {
-        return INITIAL_FAVORITES;
+        return [];
       }
     }
 
@@ -490,7 +495,7 @@
       if (event) event.stopPropagation();
       let favs = getFavorites();
       favs = favs.filter(f => f.id !== id);
-      localStorage.setItem('mapbike_favorites_v4', JSON.stringify(favs));
+      localStorage.setItem('mapbike_favorites_v5', JSON.stringify(favs));
       renderFavorites();
     }
 
@@ -529,7 +534,7 @@
       };
 
       favs.push(newFav);
-      localStorage.setItem('mapbike_favorites_v4', JSON.stringify(favs));
+      localStorage.setItem('mapbike_favorites_v5', JSON.stringify(favs));
       renderFavorites();
       alert(`Zapisano "${favName.trim()}" w Ulubionych trasach!`);
     }
