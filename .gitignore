@@ -1,0 +1,28 @@
+# Python & Środowisko Wirtualne
+__pycache__/
+*.py[cod]
+*$py.class
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+ENV/
+env/
+
+# Pytest & Cache
+.pytest_cache/
+backend/.pytest_cache/
+backend/cache/
+.cache/
+
+# IDE i Edytory
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Zmienne środowiskowe i klucze
+.env
+.env.local
+*.log

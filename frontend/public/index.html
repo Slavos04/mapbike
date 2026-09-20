@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MapBike - Planer Tras Rowerowych o Minimalnym Nachyleniu</title>
+  <meta name="description" content="Aplikacja wyznaczająca trasę rowerową o jak najmniejszym nachyleniu po drogach publicznych z pełną synchronizacją profilu mapy.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: rgba(30, 41, 59, 0.85);
+      --border-card: rgba(255, 255, 255, 0.1);
+      --accent-emerald: #10b981;
+      --accent-blue: #3b82f6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-family); background-color: var(--bg-dark); color: var(--text-main); height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+
+    .glass-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    .glass-button {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.9) 0%, rgba(5, 150, 105, 0.9) 100%);
+      color: #ffffff;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease-in-out;
+      box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39);
+    }
+
+    .glass-button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.55); }
+    .glass-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .search-btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .search-btn:hover { opacity: 0.9; }
+
+    header { margin: 12px 16px 0 16px; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; z-index: 1000; }
+    .logo-container { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
+
+    .preset-pill {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      color: #fff;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .preset-pill:hover { background: rgba(51, 65, 85, 1); border-color: rgba(255,255,255,0.3); }
+
+    .close-preset {
+      color: #ef4444;
+      font-weight: bold;
+      font-size: 0.9rem;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(239, 68, 68, 0.15);
+      margin-left: 2px;
+    }
+    .close-preset:hover { background: rgba(239, 68, 68, 0.8); color: #fff; }
+
+    /* Przycisk informacji (ikona i w kółeczku) w prawym górnym rogu */
+    .info-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      color: #60a5fa;
+      font-size: 1.15rem;
+      font-weight: 700;
+      font-family: serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+      margin-left: 12px;
+    }
+    .info-btn:hover {
+      background: rgba(59, 130, 246, 0.9);
+      color: #ffffff;
+      transform: scale(1.1);
+      box-shadow: 0 0 16px rgba(59, 130, 246, 0.7);
+    }
+
+    /* Modal nakładki informacyjnej o aplikacji v1.0 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-card {
+      width: 640px;
+      max-width: 92vw;
+      max-height: 85vh;
+      background: rgba(30, 41, 59, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      overflow-y: auto;
+      padding: 28px;
+      position: relative;
+      color: var(--text-main);
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #94a3b8;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close-btn:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .main-layout { display: flex; flex: 1; position: relative; overflow: hidden; }
+    sidebar { width: 440px; height: calc(100vh - 90px); margin: 12px 0 12px 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; z-index: 1000; }
+
+    input[type="text"], input[type="number"], select { width: 100%; padding: 8px; border-radius: 6px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.85rem; }
+    input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: rgba(255, 255, 255, 0.15); border-radius: 3px; outline: none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-emerald); cursor: pointer; }
+
+    #map { width: 100%; height: 100%; background: #0b1120; }
+    .variant-card { padding: 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; margin-bottom: 8px; }
+    .variant-card.active { background: rgba(30, 41, 59, 0.95); }
+
+    .marker-start { width: 18px; height: 18px; background: #10b981; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 14px #10b981; cursor: grab; }
+    .marker-start:active { cursor: grabbing; }
+
+    .marker-end { width: 18px; height: 18px; background: #ef4444; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 14px #ef4444; cursor: grab; }
+    .marker-end:active { cursor: grabbing; }
+
+    .marker-sync { width: 16px; height: 16px; background: #ffffff; border: 3px solid #3b82f6; border-radius: 50%; box-shadow: 0 0 14px #3b82f6; }
+
+    .address-badge { font-size: 0.73rem; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3); margin-top: 4px; display: none; }
+  </style>
+</head>
+<body>
+  <header class="glass-panel">
+    <div class="logo-container">
+      <div class="logo-icon">🚴🏼‍♂️</div>
+      <div>
+        <h1 style="font-size: 1.25rem; font-weight: 700; background: linear-gradient(90deg, #ffffff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">MapBike</h1>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">Planer Tras Rowerowych po Ścieżkach & Drogach Publicznych z Minimalnym Nachyleniem</p>
+      </div>
+    </div>
+    
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <div style="display: flex; gap: 8px; align-items: center;" id="presetsBar">
+        <span style="font-size: 0.8rem; color: #f59e0b; font-weight: 600;">⭐ Ulubione trasy:</span>
+        <div id="presetsList" style="display: flex; gap: 8px; align-items: center;"></div>
+      </div>
+      <!-- Przycisk ikony i w kółeczku w prawym górnym rogu -->
+      <button class="info-btn" onclick="openInfoModal()" title="O aplikacji MapBike v1.0">i</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <sidebar class="glass-panel">
+      <div>
+        <h2 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px;">🧭 Punkty Trasy (Adres, Kliknięcie lub Przeciąganie)</h2>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          
+          <!-- Punkt Startowy -->
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-main); font-weight:600;">🟢 Punkt Startowy (Przeciągaj marker myszką):</label>
+            <div style="display: flex; gap: 4px; margin-top: 4px;">
+              <input type="text" id="startAddrInput" value="" placeholder="Wpisz adres startu (np. Jastrzębie-Zdrój)" onkeypress="if(event.key==='Enter') searchAddress('start')">
+              <button class="search-btn" onclick="searchAddress('start')">Szukaj</button>
+            </div>
+            <div style="display: flex; gap: 4px; margin-top: 4px;">
+              <input type="number" step="0.0001" id="startLat" value="" placeholder="Szerokość (Lat)">
+              <input type="number" step="0.0001" id="startLon" value="" placeholder="Długość (Lon)">
+            </div>
+            <div id="startAddressBadge" class="address-badge">📍 Start: Brak</div>
+          </div>
+
+          <!-- Punkt Końcowy -->
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-main); font-weight:600;">🔴 Punkt Końcowy Meta (Przeciągaj marker myszką):</label>
+            <div style="display: flex; gap: 4px; margin-top: 4px;">
+              <input type="text" id="endAddrInput" value="" placeholder="Wpisz adres mety (np. Studzionka)" onkeypress="if(event.key==='Enter') searchAddress('end')">
+              <button class="search-btn" onclick="searchAddress('end')">Szukaj</button>
+            </div>
+            <div style="display: flex; gap: 4px; margin-top: 4px;">
+              <input type="number" step="0.0001" id="endLat" value="" placeholder="Szerokość (Lat)">
+              <input type="number" step="0.0001" id="endLon" value="" placeholder="Długość (Lon)">
+            </div>
+            <div id="endAddressBadge" class="address-badge">📍 Meta: Brak</div>
+          </div>
+
+          <!-- Przycisk dodawania do ulubionych -->
+          <button class="glass-panel" onclick="addCurrentToFavorites()" style="width: 100%; margin-top: 4px; padding: 8px; font-size: 0.8rem; color: #f59e0b; cursor: pointer; border-color: rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600;">
+            ⭐ Dodaj tę trasę do Ulubionych
+          </button>
+
+          <p style="font-size: 0.72rem; color: var(--accent-emerald); font-style: italic;">
+            💡 Kliknij na mapie lub chwyć myszką zielony/czerwony marker i przeciągnij go w dowolne miejsce!
+          </p>
+        </div>
+      </div>
+
+      <hr style="border-color: rgba(255,255,255,0.08);">
+
+      <div>
+        <h2 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px;">🎛️ Preferencje Trasowania & Podkład Mapy</h2>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+
+          <div>
+            <label style="font-size: 0.78rem; display: block; margin-bottom: 4px; font-weight:600; color:var(--text-main);">🗺️ Podkład Mapy (Styl Kafelków):</label>
+            <select id="mapProviderSelect" onchange="changeMapProvider()">
+              <option value="osm_standard" selected>OpenStreetMap Standard (Darmowa - BEZ KLUCZA API)</option>
+              <option value="opentopomap">OpenTopoMap Topograficzna (Darmowa - BEZ KLUCZA API)</option>
+              <option value="esri_street">Esri World Street Map (Darmowa - BEZ KLUCZA API)</option>
+              <option value="carto_custom">CARTO / Thunderforest / Mapbox (Z własnym kluczem API)</option>
+            </select>
+          </div>
+
+          <div id="apiKeyContainer" style="display: none;">
+            <label style="font-size: 0.75rem; color: #f59e0b; font-weight: 600;">🔑 Własny Klucz API do mapy (Opcjonalnie):</label>
+            <input type="text" id="mapApiKey" placeholder="Wklej klucz API (np. dla Thunderforest / Mapbox / CARTO)" oninput="changeMapProvider()" style="margin-top: 4px;">
+          </div>
+          
+          <div>
+            <label style="font-size: 0.78rem; display: block; margin-bottom: 4px; font-weight:600; color:var(--text-main);">🚴🏼‍♂️ Typ Nawierzchni & Ścieżki:</label>
+            <select id="routeType">
+              <option value="cycleway">Dedykowane Ścieżki Rowerowe & Drogi Lokalne (Rekomendowane)</option>
+              <option value="all_public">Wszystkie Przejezdne Drogi Publiczne</option>
+            </select>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="avoidHighways" checked style="width: auto; cursor: pointer;">
+            <label for="avoidHighways" style="font-size: 0.8rem; cursor: pointer; color: var(--accent-emerald); font-weight: 600;">
+              🛡️ Unikaj dróg o dużym ruchu (Drogi krajowe / Szosy)
+            </label>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+              <span>Liczba wariantów tras:</span>
+              <strong id="numVariantsVal" style="color: var(--accent-emerald)">5</strong>
+            </div>
+            <input type="range" id="numVariants" min="1" max="10" value="5" oninput="document.getElementById('numVariantsVal').innerText=this.value">
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+              <span>Max wydłużenie (Max Detour):</span>
+              <strong id="maxDetourVal" style="color: var(--accent-blue)">+100%</strong>
+            </div>
+            <input type="range" id="maxDetour" min="10" max="200" step="10" value="100" oninput="document.getElementById('maxDetourVal').innerText='+'+this.value+'%'">
+          </div>
+
+          <div>
+            <label style="font-size: 0.78rem; display: block; margin-bottom: 4px;">Źródło danych wysokościowych:</label>
+            <select id="elevationProvider">
+              <option value="open-meteo">Open-Meteo API (Rekomendowane)</option>
+              <option value="open-elevation">Open-Elevation API</option>
+              <option value="synthetic">Offline Fallback (Symulacja SRTM)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button class="glass-button" id="calcBtn" onclick="calculateRoute()">
+        🚀 Wyznacz Optymalne Trasy
+      </button>
+
+      <div id="variantsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+    </sidebar>
+
+    <main style="flex: 1; display: flex; flex-direction: column;">
+      <div style="flex: 1; margin: 12px 16px 12px 12px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+        <div id="map"></div>
+      </div>
+      <div class="glass-panel" style="margin: 0 16px 12px 12px; padding: 12px; height: 180px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px;">
+          <span>📊 Płynny Profil Wysokościowy (Precyzyjna Synchronizacja Dystansowa)</span>
+          <span id="chartStats" style="color: var(--text-muted);">---</span>
+        </div>
+        <div style="height: 140px; position: relative;">
+          <canvas id="elevationChart"></canvas>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Okno Modalne z Informacjami o Aplikacji i Wersji 1.0 (z README.md) -->
+  <div id="infoModal" class="modal-overlay" onclick="closeInfoModalOnBg(event)">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeInfoModal()">×</button>
+      
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 18px;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);">🚴🏼‍♂️</div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h2 style="font-size: 1.35rem; font-weight: 700; color: #fff;">MapBike</h2>
+            <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.72rem; padding: 2px 8px; border-radius: 12px; font-weight: 600;">v1.0</span>
+          </div>
+          <p style="font-size: 0.8rem; color: #94a3b8;">Planer Tras Rowerowych po Ścieżkach & Drogach Publicznych z Minimalnym Nachyleniem</p>
+        </div>
+      </div>
+
+      <hr style="border-color: rgba(255,255,255,0.1); margin-bottom: 16px;">
+
+      <p style="font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; margin-bottom: 16px;">
+        <strong>MapBike</strong> to zaawansowana aplikacja webowa przeznaczona dla rowerzystów, która automatycznie wyznacza optymalne trasy rowerowe po drogach publicznych i ścieżkach rowerowych, kładąc szczególny nacisk na <strong>minimalizację wzniesień (nachylenia terenu)</strong> oraz <strong>omijanie dróg o dużym ruchu samochodowym (dróg krajowych DK, ekspresowych S i autostrad A)</strong>.
+      </p>
+
+      <h3 style="font-size: 0.95rem; font-weight: 600; color: #10b981; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+        🌟 Główne Funkcje Aplikacji:
+      </h3>
+
+      <ul style="font-size: 0.82rem; line-height: 1.6; color: #94a3b8; padding-left: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px;">
+        <li><strong style="color: #fff;">Trasowanie po Drogach Publicznych (OSRM & OSMnx):</strong> Wyznaczanie alternatywnych tras wyciąganych z bazy OpenStreetMap z gwarancją gęstych zakrętów ulic.</li>
+        <li><strong style="color: #fff;">Wariant #1 Minimalne Nachylenie (Najbardziej Płaska):</strong> Optymalizacja ścieżki na podstawie modelu terenu DEM (Open-Meteo) w celu minimalizacji sumy podjazdów.</li>
+        <li><strong style="color: #fff;">Bezwyjątkowe Omijanie Dróg Krajowych (DK):</strong> Tryb bezpieczny z 100 000-krotną karą wagi dla szos głównych i tras szybkiego ruchu.</li>
+        <li><strong style="color: #fff;">⭐ Ulubione Trasy (Zapis w Przeglądarce):</strong> Zapisywanie własnych tras z nazwą w `localStorage` z możliwością ich szybkiego wczytywania i kasowania.</li>
+        <li><strong style="color: #fff;">Przeciąganie Markerów Start / Meta (Drag & Drop):</strong> Możliwość chwycenia zielonego markera Start 🟢 i czerwonego Meta 🔴 myszką i przesunięcia ich w dowolne miejsce na mapie.</li>
+        <li><strong style="color: #fff;">Precyzyjny Profil Wysokościowy:</strong> Płynny wykres Chart.js połączony 1-do-1 z pozycją na mapie oraz obliczanie nachylenia max (%) na oknie 120m.</li>
+        <li><strong style="color: #fff;">Eksport do Plików GPX:</strong> Pobieranie wygenerowanych wariantów tras w formacie GPX gotowych dla liczników Garmin, Wahoo, Strava czy Komoot.</li>
+      </ul>
+
+      <h3 style="font-size: 0.95rem; font-weight: 600; color: #3b82f6; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+        🛠️ Użyte Technologie:
+      </h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;">
+        <span style="background: rgba(30,41,59,0.9); border: 1px solid rgba(255,255,255,0.15); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; color: #cbd5e1;">Python 3.12</span>
+        <span style="background: rgba(30,41,59,0.9); border: 1px solid rgba(255,255,255,0.15); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; color: #cbd5e1;">FastAPI</span>
+        <span style="background: rgba(30,41,59,0.9); border: 1px solid rgba(255,255,255,0.15); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; color: #cbd5e1;">OSMnx & NetworkX</span>
+        <span style="background: rgba(30,41,59,0.9); border: 1px solid rgba(255,255,255,0.15); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; color: #cbd5e1;">OSRM Biking Engine</span>
+        <span style="background: rgba(30,41,59,0.9); border: 1px solid rgba(255,255,255,0.15); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; color: #cbd5e1;">Open-Meteo DEM API</span>
+        <span style="background: rgba(30,41,59,0.9); border: 1px solid rgba(255,255,255,0.15); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; color: #cbd5e1;">Leaflet.js</span>
+        <span style="background: rgba(30,41,59,0.9); border: 1px solid rgba(255,255,255,0.15); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; color: #cbd5e1;">Chart.js</span>
+      </div>
+
+      <div style="font-size: 0.75rem; color: #64748b; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span>Wersja: <strong>MapBike 1.0</strong> | Licencja: <strong>MIT</strong></span>
+        <span>Dane mapowe: <strong>© OpenStreetMap contributors</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let map, chart, tileLayer;
+    let startMarker, endMarker, syncMarker;
+    let polylineLayers = [];
+    let currentData = null;
+    let activeVariantId = 1;
+    let clickState = 'start';
+
+    const INITIAL_FAVORITES = [
+      { id: 'f1', name: 'Jastrzębie -> Studzionka', sLat: 49.9546, sLon: 18.5898, eLat: 49.9882, eLon: 18.7615 },
+      { id: 'f2', name: 'Kraków', sLat: 50.0619, sLon: 19.9368, eLat: 50.0682, eLon: 19.9912 },
+      { id: 'f3', name: 'Zakopane', sLat: 49.2990, sLon: 19.9580, eLat: 49.2690, eLon: 19.9810 }
+    ];
+
+    function openInfoModal() {
+      const modal = document.getElementById('infoModal');
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeInfoModal() {
+      const modal = document.getElementById('infoModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function closeInfoModalOnBg(event) {
+      if (event.target.id === 'infoModal') {
+        closeInfoModal();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeInfoModal();
+      }
+    });
+
+    function getFavorites() {
+      const stored = localStorage.getItem('mapbike_favorites_v4');
+      if (stored === null) {
+        localStorage.setItem('mapbike_favorites_v4', JSON.stringify(INITIAL_FAVORITES));
+        return INITIAL_FAVORITES;
+      }
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        return INITIAL_FAVORITES;
+      }
+    }
+
+    function renderFavorites() {
+      const favs = getFavorites();
+      const container = document.getElementById('presetsList');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (favs.length === 0) {
+        container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">(Brak ulubionych tras - dodaj pierwszą poniżej)</span>';
+        return;
+      }
+
+      favs.forEach(f => {
+        const pill = document.createElement('div');
+        pill.className = 'preset-pill';
+        pill.innerHTML = `⭐ ${f.name} <span class="close-preset" onclick="removeFavorite('${f.id}', event)">×</span>`;
+        pill.onclick = () => setPreset(f.sLat, f.sLon, f.eLat, f.eLon);
+        container.appendChild(pill);
+      });
+    }
+
+    function removeFavorite(id, event) {
+      if (event) event.stopPropagation();
+      let favs = getFavorites();
+      favs = favs.filter(f => f.id !== id);
+      localStorage.setItem('mapbike_favorites_v4', JSON.stringify(favs));
+      renderFavorites();
+    }
+
+    function addCurrentToFavorites() {
+      const sLatVal = document.getElementById('startLat').value;
+      const sLonVal = document.getElementById('startLon').value;
+      const eLatVal = document.getElementById('endLat').value;
+      const eLonVal = document.getElementById('endLon').value;
+
+      if (!sLatVal || !sLonVal || !eLatVal || !eLonVal) {
+        alert('Najpierw zaznacz lub wyznacz punkty Start i Meta na mapie!');
+        return;
+      }
+
+      const sBadge = document.getElementById('startAddressBadge').innerText.replace('📍 ', '');
+      const eBadge = document.getElementById('endAddressBadge').innerText.replace('📍 ', '');
+
+      let defaultName = 'Ulubiona trasa';
+      if (sBadge && eBadge && sBadge !== 'Start: Brak' && eBadge !== 'Meta: Brak') {
+        const sShort = sBadge.split(',')[0];
+        const eShort = eBadge.split(',')[0];
+        defaultName = `${sShort} → ${eShort}`;
+      }
+
+      const favName = prompt('Wpisz nazwę dla tej ulubionej trasy:', defaultName);
+      if (!favName || !favName.trim()) return;
+
+      const favs = getFavorites();
+      const newFav = {
+        id: 'fav_' + Date.now(),
+        name: favName.trim(),
+        sLat: parseFloat(sLatVal),
+        sLon: parseFloat(sLonVal),
+        eLat: parseFloat(eLatVal),
+        eLon: parseFloat(eLonVal)
+      };
+
+      favs.push(newFav);
+      localStorage.setItem('mapbike_favorites_v4', JSON.stringify(favs));
+      renderFavorites();
+      alert(`Zapisano "${favName.trim()}" w Ulubionych trasach!`);
+    }
+
+    function saveState() {
+      const sLat = document.getElementById('startLat').value;
+      const sLon = document.getElementById('startLon').value;
+      const eLat = document.getElementById('endLat').value;
+      const eLon = document.getElementById('endLon').value;
+      const sBadge = document.getElementById('startAddressBadge').innerText;
+      const eBadge = document.getElementById('endAddressBadge').innerText;
+
+      const state = {
+        start: sLat && sLon ? { lat: parseFloat(sLat), lon: parseFloat(sLon), addr: sBadge } : null,
+        end: eLat && eLon ? { lat: parseFloat(eLat), lon: parseFloat(eLon), addr: eBadge } : null
+      };
+      localStorage.setItem('mapbike_user_state_v1', JSON.stringify(state));
+    }
+
+    function loadState() {
+      try {
+        const stored = localStorage.getItem('mapbike_user_state_v1');
+        if (stored) {
+          const state = JSON.parse(stored);
+          if (state.start) {
+            document.getElementById('startLat').value = state.start.lat.toFixed(4);
+            document.getElementById('startLon').value = state.start.lon.toFixed(4);
+            if (state.start.addr && state.start.addr !== '📍 Start: Brak') {
+              const badge = document.getElementById('startAddressBadge');
+              badge.style.display = 'block';
+              badge.innerText = state.start.addr;
+            }
+          }
+          if (state.end) {
+            document.getElementById('endLat').value = state.end.lat.toFixed(4);
+            document.getElementById('endLon').value = state.end.lon.toFixed(4);
+            if (state.end.addr && state.end.addr !== '📍 Meta: Brak') {
+              const badge = document.getElementById('endAddressBadge');
+              badge.style.display = 'block';
+              badge.innerText = state.end.addr;
+            }
+          }
+          if (state.start && state.end) {
+            updateMarkers();
+          }
+        }
+      } catch (e) {}
+    }
+
+    function changeMapProvider() {
+      const provider = document.getElementById('mapProviderSelect').value;
+      const keyContainer = document.getElementById('apiKeyContainer');
+      const apiKey = document.getElementById('mapApiKey').value.trim();
+
+      if (provider === 'carto_custom') {
+        keyContainer.style.display = 'block';
+      } else {
+        keyContainer.style.display = 'none';
+      }
+
+      if (tileLayer && map) {
+        map.removeLayer(tileLayer);
+      }
+
+      let url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      let attrib = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+      if (provider === 'opentopomap') {
+        url = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+        attrib = '&copy; OpenStreetMap contributors, SRTM | OpenTopoMap';
+      } else if (provider === 'esri_street') {
+        url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+        attrib = 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012';
+      } else if (provider === 'carto_custom') {
+        if (apiKey) {
+          url = `https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=${apiKey}`;
+          attrib = '&copy; OpenStreetMap &copy; Thunderforest';
+        } else {
+          url = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+          attrib = '&copy; OpenStreetMap &copy; CARTO';
+        }
+      }
+
+      tileLayer = L.tileLayer(url, { attribution: attrib, maxZoom: 19 }).addTo(map);
+    }
+
+    function initMap() {
+      map = L.map('map').setView([52.0693, 19.4803], 6);
+      
+      // Domyślnie używamy 100% BEZPŁATNYCH i BEZKLUCZOWYCH kafelków OpenStreetMap Standard!
+      changeMapProvider();
+
+      renderFavorites();
+
+      map.on('click', async (e) => {
+        const lat = e.latlng.lat;
+        const lon = e.latlng.lng;
+        
+        if (clickState === 'start') {
+          document.getElementById('startAddrInput').value = '';
+          document.getElementById('startLat').value = lat.toFixed(4);
+          document.getElementById('startLon').value = lon.toFixed(4);
+          clickState = 'end';
+          await updateReverseGeocode('start', lat, lon);
+        } else {
+          document.getElementById('endAddrInput').value = '';
+          document.getElementById('endLat').value = lat.toFixed(4);
+          document.getElementById('endLon').value = lon.toFixed(4);
+          clickState = 'start';
+          await updateReverseGeocode('end', lat, lon);
+        }
+        updateMarkers();
+        saveState();
+      });
+
+      initChart();
+      loadState();
+    }
+
+    async function searchAddress(target) {
+      const inputId = target === 'start' ? 'startAddrInput' : 'endAddrInput';
+      const query = document.getElementById(inputId).value;
+      if (!query) {
+        alert('Wpisz nazwę miejscowości lub ulicy przed wyszukaniem!');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/geocode?query=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (target === 'start') {
+            document.getElementById('startLat').value = data.lat.toFixed(4);
+            document.getElementById('startLon').value = data.lon.toFixed(4);
+            const badge = document.getElementById('startAddressBadge');
+            badge.style.display = 'block';
+            badge.innerText = `📍 ${data.display_name}`;
+          } else {
+            document.getElementById('endLat').value = data.lat.toFixed(4);
+            document.getElementById('endLon').value = data.lon.toFixed(4);
+            const badge = document.getElementById('endAddressBadge');
+            badge.style.display = 'block';
+            badge.innerText = `📍 ${data.display_name}`;
+          }
+          updateMarkers();
+          saveState();
+          map.setView([data.lat, data.lon], 14);
+        } else {
+          alert('Nie znaleziono podanego adresu: ' + query);
+        }
+      } catch (e) {
+        alert('Błąd wyszukiwania adresu: ' + e);
+      }
+    }
+
+    async function updateReverseGeocode(target, lat, lon) {
+      try {
+        const res = await fetch(`/api/reverse-geocode?lat=${lat}&lon=${lon}`);
+        if (res.ok) {
+          const data = await res.json();
+          const badgeId = target === 'start' ? 'startAddressBadge' : 'endAddressBadge';
+          const badge = document.getElementById(badgeId);
+          badge.style.display = 'block';
+          badge.innerText = `📍 ${data.address}`;
+          saveState();
+        }
+      } catch (e) {}
+    }
+
+    function setPreset(sLat, sLon, eLat, eLon) {
+      document.getElementById('startAddrInput').value = '';
+      document.getElementById('endAddrInput').value = '';
+      document.getElementById('startAddressBadge').style.display = 'none';
+      document.getElementById('endAddressBadge').style.display = 'none';
+
+      document.getElementById('startLat').value = sLat.toFixed(4);
+      document.getElementById('startLon').value = sLon.toFixed(4);
+      document.getElementById('endLat').value = eLat.toFixed(4);
+      document.getElementById('endLon').value = eLon.toFixed(4);
+
+      updateReverseGeocode('start', sLat, sLon);
+      updateReverseGeocode('end', eLat, eLon);
+      updateMarkers();
+      saveState();
+      calculateRoute();
+    }
+
+    function updateMarkers() {
+      const sLatVal = document.getElementById('startLat').value;
+      const sLonVal = document.getElementById('startLon').value;
+      const eLatVal = document.getElementById('endLat').value;
+      const eLonVal = document.getElementById('endLon').value;
+
+      if (startMarker) map.removeLayer(startMarker);
+      if (endMarker) map.removeLayer(endMarker);
+
+      const startIcon = L.divIcon({ className: 'marker-start', iconSize: [18, 18] });
+      const endIcon = L.divIcon({ className: 'marker-end', iconSize: [18, 18] });
+
+      if (sLatVal && sLonVal) {
+        const sLat = parseFloat(sLatVal);
+        const sLon = parseFloat(sLonVal);
+        startMarker = L.marker([sLat, sLon], { icon: startIcon, draggable: true }).addTo(map).bindPopup('🟢 Start (Chwyć i przeciągnij)');
+
+        startMarker.on('dragend', async (e) => {
+          const pos = e.target.getLatLng();
+          document.getElementById('startAddrInput').value = '';
+          document.getElementById('startLat').value = pos.lat.toFixed(4);
+          document.getElementById('startLon').value = pos.lng.toFixed(4);
+          await updateReverseGeocode('start', pos.lat, pos.lng);
+          saveState();
+        });
+      }
+
+      if (eLatVal && eLonVal) {
+        const eLat = parseFloat(eLatVal);
+        const eLon = parseFloat(eLonVal);
+        endMarker = L.marker([eLat, eLon], { icon: endIcon, draggable: true }).addTo(map).bindPopup('🔴 Meta (Chwyć i przeciągnij)');
+
+        endMarker.on('dragend', async (e) => {
+          const pos = e.target.getLatLng();
+          document.getElementById('endAddrInput').value = '';
+          document.getElementById('endLat').value = pos.lat.toFixed(4);
+          document.getElementById('endLon').value = pos.lng.toFixed(4);
+          await updateReverseGeocode('end', pos.lat, pos.lng);
+          saveState();
+        });
+      }
+    }
+
+    async function calculateRoute() {
+      const sLatVal = document.getElementById('startLat').value;
+      const sLonVal = document.getElementById('startLon').value;
+      const eLatVal = document.getElementById('endLat').value;
+      const eLonVal = document.getElementById('endLon').value;
+      const startAddr = document.getElementById('startAddrInput').value;
+      const endAddr = document.getElementById('endAddrInput').value;
+
+      if (!sLatVal && !startAddr) {
+        alert('Podaj punkt Start (wpisz adres lub kliknij na mapie)!');
+        return;
+      }
+      if (!eLatVal && !endAddr) {
+        alert('Podaj punkt Meta (wpisz adres lub kliknij na mapie)!');
+        return;
+      }
+
+      const btn = document.getElementById('calcBtn');
+      btn.disabled = true;
+      btn.innerText = 'Obliczanie optymalnych tras rowerowych...';
+
+      updateMarkers();
+      saveState();
+
+      const payload = {
+        start: sLatVal ? { lat: parseFloat(sLatVal), lon: parseFloat(sLonVal) } : null,
+        end: eLatVal ? { lat: parseFloat(eLatVal), lon: parseFloat(eLonVal) } : null,
+        start_address: startAddr || null,
+        end_address: endAddr || null,
+        num_variants: parseInt(document.getElementById('numVariants').value),
+        max_detour_percent: parseFloat(document.getElementById('maxDetour').value),
+        elevation_provider: document.getElementById('elevationProvider').value,
+        route_type: document.getElementById('routeType').value,
+        avoid_highways: document.getElementById('avoidHighways').checked
+      };
+
+      try {
+        const res = await fetch('/api/route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || 'Błąd API');
+        }
+
+        const data = await res.json();
+        currentData = data;
+        
+        if (data.start) {
+          document.getElementById('startLat').value = data.start.lat.toFixed(4);
+          document.getElementById('startLon').value = data.start.lon.toFixed(4);
+        }
+        if (data.end) {
+          document.getElementById('endLat').value = data.end.lat.toFixed(4);
+          document.getElementById('endLon').value = data.end.lon.toFixed(4);
+        }
+
+        if (data.start_address) {
+          const badge = document.getElementById('startAddressBadge');
+          badge.style.display = 'block';
+          badge.innerText = `📍 ${data.start_address}`;
+        }
+        if (data.end_address) {
+          const badge = document.getElementById('endAddressBadge');
+          badge.style.display = 'block';
+          badge.innerText = `📍 ${data.end_address}`;
+        }
+
+        saveState();
+        renderRoutes(data);
+      } catch (e) {
+        alert('Błąd podczas wyznaczania tras: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '🚀 Wyznacz Optymalne Trasy';
+      }
+    }
+
+    function renderRoutes(data) {
+      polylineLayers.forEach(l => map.removeLayer(l));
+      polylineLayers = [];
+
+      const container = document.getElementById('variantsContainer');
+      container.innerHTML = '';
+
+      if (!data.variants || data.variants.length === 0) return;
+
+      const bounds = [];
+
+      data.variants.forEach((v, idx) => {
+        const positions = v.geometry.map(pt => [pt.lat, pt.lon]);
+        positions.forEach(p => bounds.push(p));
+
+        const isActive = v.id === activeVariantId;
+
+        const polyline = L.polyline(positions, {
+          color: v.color,
+          weight: isActive ? 7 : 4,
+          opacity: isActive ? 0.95 : 0.45,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+
+        // MAPA -> WYKRES PROFILU (SYNCHRONIZACJA DYSTANSOWA)
+        polyline.on('mousemove', (e) => {
+          if (v.id === activeVariantId) {
+            highlightMapPointToChart(e.latlng, v);
+          }
+        });
+
+        polyline.on('click', () => selectVariant(v.id));
+        polylineLayers.push(polyline);
+
+        const card = document.createElement('div');
+        card.className = `glass-panel variant-card ${isActive ? 'active' : ''}`;
+        card.style.borderLeft = `5px solid ${v.color}`;
+        card.onclick = () => selectVariant(v.id);
+
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <strong style="font-size:0.85rem; color:#fff;">#${v.id} ${v.name}</strong>
+            <span style="font-size:0.7rem; color:${v.is_within_limit ? '#10b981' : '#f59e0b'}">
+              ${v.is_within_limit ? '✓ Limit OK' : '⚠ Ponad limit'}
+            </span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
+            <div>📏 Dystans: <strong style="color:#fff">${v.total_distance_km} km</strong></div>
+            <div>⛰️ Podjazdy: <strong style="color:#10b981">+${v.total_ascent_m} m</strong></div>
+            <div>📈 Śr. nachylenie: <strong style="color:#fff">${v.avg_grade_percent}%</strong></div>
+            <div>🚨 Max nachylenie: <strong style="color:#10b981">${v.max_grade_percent}%</strong></div>
+          </div>
+          <button class="glass-panel" onclick="event.stopPropagation(); downloadGpx(${idx})" style="width:100%; margin-top:6px; padding:5px; font-size:0.75rem; color:#fff; cursor:pointer;">
+            💾 Pobierz plik GPX
+          </button>
+        `;
+        container.appendChild(card);
+      });
+
+      if (bounds.length > 0) map.fitBounds(bounds, { padding: [40, 40] });
+
+      selectVariant(data.variants[0].id);
+    }
+
+    function selectVariant(variantId) {
+      activeVariantId = variantId;
+      if (!currentData || !currentData.variants) return;
+
+      const variant = currentData.variants.find(v => v.id === variantId) || currentData.variants[0];
+
+      const cards = document.querySelectorAll('.variant-card');
+      cards.forEach((c, idx) => {
+        if (currentData.variants[idx] && currentData.variants[idx].id === variantId) {
+          c.classList.add('active');
+        } else {
+          c.classList.remove('active');
+        }
+      });
+
+      polylineLayers.forEach((poly, idx) => {
+        const v = currentData.variants[idx];
+        if (v && v.id === variantId) {
+          poly.setStyle({ weight: 7, opacity: 0.95 });
+          poly.bringToFront();
+        } else {
+          poly.setStyle({ weight: 4, opacity: 0.4 });
+        }
+      });
+
+      updateChart(variant);
+    }
+
+    // PRECYZYJNA SYNCHRONIZACJA DYSTANSOWA: MAPA -> WYKRES
+    function highlightMapPointToChart(latlng, variant) {
+      if (!variant || !variant.geometry || !variant.elevation_profile || !chart) return;
+      
+      let closestGeomPt = variant.geometry[0];
+      let minDistSq = Infinity;
+
+      for (let i = 0; i < variant.geometry.length; i++) {
+        const pt = variant.geometry[i];
+        const dSq = Math.pow(pt.lat - latlng.lat, 2) + Math.pow(pt.lon - latlng.lng, 2);
+        if (dSq < minDistSq) {
+          minDistSq = dSq;
+          closestGeomPt = pt;
+        }
+      }
+
+      const targetDistKm = closestGeomPt.distance_m / 1000.0;
+
+      let closestChartIdx = 0;
+      let minChartDistDiff = Infinity;
+
+      for (let i = 0; i < variant.elevation_profile.length; i++) {
+        const pPt = variant.elevation_profile[i];
+        const diff = Math.abs(pPt.distance_m - targetDistKm);
+        if (diff < minChartDistDiff) {
+          minChartDistDiff = diff;
+          closestChartIdx = i;
+        }
+      }
+
+      chart.setActiveElements([{ datasetIndex: 0, index: closestChartIdx }]);
+      chart.tooltip.setActiveElements([{ datasetIndex: 0, index: closestChartIdx }], { x: 0, y: 0 });
+      chart.update('none');
+
+      updateSyncMarker(closestGeomPt.lat, closestGeomPt.lon, closestGeomPt.elevation_m, closestGeomPt.distance_m);
+    }
+
+    // PRECYZYJNA SYNCHRONIZACJA DYSTANSOWA: WYKRES -> MAPA
+    function highlightChartPointToMap(chartElements) {
+      if (!chartElements || chartElements.length === 0 || !currentData) return;
+      const chartIdx = chartElements[0].index;
+
+      const variant = currentData.variants.find(v => v.id === activeVariantId) || currentData.variants[0];
+      if (!variant || !variant.elevation_profile || !variant.geometry) return;
+
+      const profilePt = variant.elevation_profile[chartIdx];
+      if (!profilePt) return;
+
+      const targetDistM = profilePt.distance_m * 1000.0;
+
+      let closestGeomPt = variant.geometry[0];
+      let minDiff = Infinity;
+
+      for (let i = 0; i < variant.geometry.length; i++) {
+        const gPt = variant.geometry[i];
+        const diff = Math.abs(gPt.distance_m - targetDistM);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestGeomPt = gPt;
+        }
+      }
+
+      updateSyncMarker(closestGeomPt.lat, closestGeomPt.lon, closestGeomPt.elevation_m, closestGeomPt.distance_m);
+    }
+
+    function updateSyncMarker(lat, lon, elev, dist_m) {
+      if (syncMarker) map.removeLayer(syncMarker);
+
+      const syncIcon = L.divIcon({ className: 'marker-sync', iconSize: [16, 16] });
+      syncMarker = L.marker([lat, lon], { icon: syncIcon, zIndexOffset: 2000 }).addTo(map);
+      syncMarker.bindPopup(`Wysokość: <strong>${elev} m n.p.m.</strong><br>Dystans: <strong>${(dist_m/1000).toFixed(2)} km</strong>`, { autoPan: false }).openPopup();
+    }
+
+    function downloadGpx(idx) {
+      if (!currentData || !currentData.variants || !currentData.variants[idx]) return;
+      const v = currentData.variants[idx];
+      const blob = new Blob([v.gpx_data], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mapbike_${v.name.replace(/\\s+/g, '_').toLowerCase()}.gpx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('elevationChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [], borderColor: '#10b981', borderWidth: 2, fill: true, tension: 0.4 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          elements: { point: { radius: 0, hoverRadius: 6, hoverBackgroundColor: '#ffffff', hoverBorderColor: '#3b82f6', hoverBorderWidth: 3 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              titleColor: '#ffffff',
+              bodyColor: '#94a3b8',
+              callbacks: {
+                label: function(context) {
+                  return ` Wysokość: ${context.parsed.y} m n.p.m.`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 9 }, maxTicksLimit: 12 } },
+            y: { ticks: { color: '#94a3b8', font: { size: 9 } } }
+          },
+          onHover: function(event, activeElements) {
+            highlightChartPointToMap(activeElements);
+          }
+        }
+      });
+    }
+
+    function updateChart(variant) {
+      if (!chart || !variant.elevation_profile) return;
+      const labels = variant.elevation_profile.map(p => `${p.distance_m}km`);
+      const elevs = variant.elevation_profile.map(p => p.elevation_m);
+
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = elevs;
+      chart.data.datasets[0].borderColor = variant.color || '#10b981';
+      chart.update();
+
+      document.getElementById('chartStats').innerText = `Podjazdy: +${variant.total_ascent_m}m | Dystans: ${variant.total_distance_km}km | Średnie nachylenie: ${variant.avg_grade_percent}%`;
+    }
+
+    window.onload = initMap;
+  </script>
+</body>
+</html>

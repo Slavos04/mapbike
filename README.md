@@ -1,0 +1,94 @@
+# MapBike - Planer Tras Rowerowych o Minimalnym Nachyleniu 🚴🏼‍♂️
+
+**MapBike** to zaawansowana aplikacja webowa przeznaczona dla rowerzystów, która automatycznie wyznacza optymalne trasy rowerowe po drogach publicznych i ścieżkach rowerowych, kładąc szczególny nacisk na **minimalizację wzniesień (nachylenia terenu)** oraz **omijanie dróg o dużym ruchu samochodowym (dróg krajowych DK, ekspresowych i autostrad)**.
+
+---
+
+## 🌟 Główne Funkcje Aplikacji
+
+1. **Trasowanie po Rzeczywistych Drogach Publicznych (OSRM & OSMnx)**:
+   - Wyznaczanie od 1 do 10 alternatywnych wariantów tras wyciąganych bezpośrednio z bazy danych OpenStreetMap.
+   - Gwarancja gęstej geometrii ulic (brak sztucznych linii prostych czy ścięć).
+
+2. **Dedykowany Wariant #1: Minimalne Nachylenie (Najbardziej Płaska)**:
+   - Optymalizacja matematyczna ścieżki na podstawie cyfrowego modelu terenu DEM z API Open-Meteo.
+   - Wyznaczanie trasy o najniższej możliwej sumie podjazdów w metrach.
+
+3. **Bezwyjątkowe Omijanie Dróg Krajowych (DK)**:
+   - Możliwość włączenia trybu bezpiecznego/cichego (`🛡️ Unikaj dróg o dużym ruchu`), nakładającego 100 000-krotną karę wagi dla szos ruchliwych (DK1-DK98, S, A).
+
+4. **Trwały System Ulubionych Tras**:
+   - Możliwość dodawania własnych tras do **⭐ Ulubionych tras** z własną nazwą.
+   - Zapisywanie Ulubionych tras i punktów w lokalnej pamięci przeglądarki (`localStorage`).
+
+5. **Przeciąganie Markerów Start/Meta (Drag & Drop)**:
+   - Możliwość chwycenia zielonego markera 🟢 Start lub czerwonego markera 🔴 Meta myszką i przesunięcia ich na mapie Leaflet.
+   - Automatyczna aktualizacja adresów i współrzędnych.
+
+6. **Precyzyjna Synchronizacja Profilu Wysokościowego**:
+   - Płynny wykres wysokościowy Chart.js połączony 1-do-1 z pozycją na mapie na podstawie dystansu w kilometrach.
+   - Realistyczne obliczanie maksymalnego nachylenia (%) na 120-metrowym oknie drogowym.
+
+7. **Eksport do Plików GPX**:
+   - Pobieranie wygenerowanej trasy w standardowym formacie GPX gotowym do wgrania na licznik rowerowy (Garmin, Wahoo) lub do aplikacji Komoot / Strava.
+
+---
+
+## 🏗️ Architektura Projektu
+
+- **Backend**: Python 3.12, FastAPI, NetworkX, OSMnx, Shapely, Gpxpy, Pytest, Uvicorn.
+- **Frontend**: HTML5, Vanilla JavaScript (ES6+), Leaflet.js (Mapy), Chart.js (Profile wysokościowe).
+- **Usługi Zewnętrzne**:
+  - Open-Meteo API (Wysokości n.p.m. DEM).
+  - OpenStreetMap / Nominatim (Geokodowanie adresowe).
+  - OSRM Biking Router (Trasy drogowo-rowerowe).
+
+---
+
+## 🚀 Uruchomienie Lokalne (Środowisko Deweloperskie)
+
+### Wymagania:
+- Python 3.10 lub nowszy
+- Git
+
+### Krok 1: Klonowanie i przejście do katalogu
+```bash
+git clone https://github.com/user/mapbike.git
+cd mapbike
+```
+
+### Krok 2: Instalacja zależności backendowych
+```bash
+cd backend
+python -m venv venv
+# Na systemie Windows:
+venv\Scripts\activate
+# Na systemie Linux/macOS:
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### Krok 3: Uruchomienie serwera
+```bash
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+### Krok 4: Otwarcie w przeglądarce
+Otwórz przeglądarkę pod adresem:
+`http://localhost:8000`
+
+---
+
+## 🧪 Uruchomienie Testów Jednostkowych
+
+Dla weryfikacji poprawności działania wyznaczania tras i profilu wysokościowego:
+```bash
+cd backend
+python -m pytest app/tests
+```
+
+---
+
+## 📜 Licencja
+Projekt udostępniany na licencji MIT. Dane mapowe © Autorzy OpenStreetMap.

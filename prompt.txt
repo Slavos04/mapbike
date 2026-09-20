@@ -1,0 +1,147 @@
+Zaprojektuj i wygeneruj kompletną aplikację (backend + frontend) działającą lokalnie, z możliwością łatwego wdrożenia w chmurze w przyszłości. Aplikacja ma wyznaczać trasę rowerową o jak najmniejszym nachyleniu pomiędzy dwoma punktami na mapie, korzystając z danych OpenStreetMap i darmowych danych wysokościowych.
+
+Wymagania funkcjonalne
+Użytkownik wybiera punkt startowy i końcowy na mapie (kliknięcie lub wpisanie współrzędnych).
+
+Aplikacja pobiera dane drogowe i ścieżki rowerowe z OpenStreetMap (OSM) — tylko istniejące drogi i ścieżki, bez tras „po terenie”.
+
+Aplikacja pobiera dane wysokościowe z najłatwiejszego darmowego źródła bez logowania, np.:
+
+OpenElevation API
+
+lub lokalne SRTM (automatyczne pobieranie kafli)
+
+Aplikacja generuje kilka alternatywnych tras, różniących się:
+
+długością,
+
+średnim nachyleniem,
+
+maksymalnym nachyleniem,
+
+sumą podjazdów,
+
+profilem wysokościowym.
+
+Priorytet: minimalne nachylenie, nawet kosztem dłuższej trasy.
+
+Tryby:
+
+Tryb 1 – Minimalne nachylenie (waga gradientu >> długość)
+
+Tryb 2 – Zbalansowany (kompromis długość/nachylenie)
+
+Wynik trasy można zapisać jako plik GPX.
+
+Backend — wymagania techniczne
+Język: Python
+
+Framework: FastAPI
+
+Biblioteki:
+
+osmnx — pobieranie grafu drogowego z OSM
+
+networkx — obliczenia grafowe
+
+rasterio lub SRTM.py — jeśli używasz lokalnych danych wysokościowych
+
+requests — jeśli używasz OpenElevation API
+
+numpy, pandas
+
+Algorytm wyznaczania trasy:
+
+Dijkstra lub A* z wagą zależną od nachylenia:
+
+waga = długość * (1 + nachylenie * współczynnik)
+
+możliwość generowania kilku wariantów poprzez modyfikację wag
+
+Backend zwraca JSON zawierający:
+
+listę punktów trasy (lat/lon)
+
+długość trasy
+
+średnie nachylenie
+
+maksymalne nachylenie
+
+sumę podjazdów
+
+profil wysokościowy (lista wysokości)
+
+gotowy GPX jako string
+
+Dodaj:
+
+instrukcję instalacji
+
+przykładowe zapytania API
+
+testy jednostkowe (pytest)
+
+Frontend — wymagania techniczne
+Framework: React lub Vue (dowolny)
+
+Mapa: Leaflet.js lub MapLibre
+
+Funkcje:
+
+wybór punktu start/meta na mapie
+
+wyświetlanie kilku tras w różnych kolorach
+
+interaktywne podświetlanie trasy po kliknięciu
+
+wyświetlanie parametrów trasy:
+
+długość
+
+średnie nachylenie
+
+maksymalne nachylenie
+
+suma podjazdów
+
+wykres profilu wysokościowego (np. Chart.js)
+
+przycisk „Pobierz GPX”
+
+Architektura
+Backend i frontend jako osobne moduły.
+
+Backend wystawia REST API.
+
+Frontend komunikuje się przez fetch/axios.
+
+Kod ma być gotowy do uruchomienia lokalnie.
+
+Przygotuj strukturę projektu tak, aby później łatwo dodać Dockerfile.
+
+Dodatkowe wymagania
+Kod ma być kompletny, działający i gotowy do uruchomienia.
+
+Dodaj komentarze w kluczowych miejscach.
+
+Dodaj instrukcję uruchomienia na Linux (Kubuntu).
+
+Dodaj przykładowe dane testowe.
+
+Dodaj możliwość łatwej zmiany źródła danych wysokościowych.
+
+Cel końcowy
+Otrzymać w pełni działającą aplikację, która:
+
+wyznacza trasę rowerową o minimalnym nachyleniu,
+
+pokazuje kilka wariantów,
+
+rysuje trasy na mapie,
+
+generuje profil wysokościowy,
+
+pozwala pobrać GPX,
+
+działa lokalnie i jest gotowa do wdrożenia w chmurze.
