@@ -804,8 +804,22 @@
         });
         
         if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.detail || 'Błąd API');
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const errData = await res.json();
+            throw new Error(errData.detail || `Błąd API (HTTP ${res.status})`);
+          } else {
+            const text = await res.text();
+            if (res.status === 502) {
+              throw new Error('Błąd 502 Bad Gateway: Backend (FastAPI / Uvicorn) na serwerze jest wyłączony lub nie odpowiada.');
+            } else if (res.status === 504) {
+              throw new Error('Błąd 504 Gateway Timeout: Czas oczekiwania na przeliczenie tras przekroczył limit serwera Nginx.');
+            } else if (res.status === 404) {
+              throw new Error('Błąd 404 Not Found: Ścieżka /api/route nie została znaleziona w konfiguracji Nginx.');
+            } else {
+              throw new Error(`Błąd HTTP ${res.status}: Serwer zwrócił odpowiedź HTML zamiast danych JSON.`);
+            }
+          }
         }
 
         const data = await res.json();
